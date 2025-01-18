@@ -10,8 +10,13 @@ interface ModelCard {
     version_number: number
 }
 
-export default function BenchmarkPage() {
+export default function BenchmarkPage({
+    params
+}: {
+    params: { id: string }
+}) {
     const [models, setModels] = useState<ModelCard[]>([])
+    const projectId = parseInt(params.id)
 
     const handleDelete = async (modelId: number) => {
         const client = createClient()
@@ -31,6 +36,7 @@ export default function BenchmarkPage() {
             const { data, error } = await client
                 .from('model')
                 .select('id, score, version_number')
+                .eq('project_id', projectId)
                 .order('version_number', { ascending: true })
 
             if (!error && data) {
@@ -40,9 +46,6 @@ export default function BenchmarkPage() {
 
         fetchModels()
     }, [])
-
-    // TODO set this ID
-    const projectId = 1
 
     return (
         <div className="min-h-screen flex justify-center">
