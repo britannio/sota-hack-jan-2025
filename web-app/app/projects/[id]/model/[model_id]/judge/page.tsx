@@ -14,9 +14,14 @@ import { createClient } from '@/utils/supabase/client'
 
 type JudgeData = {
     synthetic_data: { data: string }
-    model_output: { id: number, data: string }
-    judge_critique: { critique_text: string; pass: boolean | null }
-    expert_critique: { critique_text: string; pass: boolean | null }
+    evaluation: {
+        model_output: string
+        judge_critique_text: string
+        judge_pass: boolean | null
+        expert_critique_text: string
+        expert_pass: boolean | null
+        improved_output: string | null
+    }
 }
 
 export default function JudgePage({ params }: { params: Promise<{ id: string, model_id: string }> }) {
@@ -40,40 +45,44 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
 
             setProject(projectData)
 
-            // Fetch combined data
-            const { data: judgeData } = await supabase
+            // Fetch combined data with new table structure
+            const { data: evaluationData } = await supabase
                 .from('synthetic_data')
                 .select(`
-          data,
-          model_output!inner (
-            id,
-            data,
-            judge_critique (critique_text, pass),
-            expert_critique (critique_text, pass)
-          )
-        `)
+                    data,
+                    model_evaluation!inner (
+                        model_output,
+                        judge_critique_text,
+                        judge_pass,
+                        expert_critique_text,
+                        expert_pass,
+                        improved_output
+                    )
+                `)
                 .eq('project_id', projectId)
-                .eq('model_output.model_id', modelId)
+                .eq('model_evaluation.model_id', modelId)
 
             // Transform data for table
-            const transformedData = judgeData?.map(row => ({
+            const transformedData = evaluationData?.map(row => ({
                 synthetic_data: { data: row.data || '' },
-                model_output: { 
-                    id: row.model_output[0].id,
-                    data: row.model_output[0].data || '' 
-                },
-                judge_critique: row.model_output[0].judge_critique[0] || { critique_text: '', pass: null },
-                expert_critique: row.model_output[0].expert_critique[0] || { critique_text: '', pass: null }
+                evaluation: {
+                    model_output: row.model_evaluation[0].model_output || '',
+                    judge_critique_text: row.model_evaluation[0].judge_critique_text || '',
+                    judge_pass: row.model_evaluation[0].judge_pass,
+                    expert_critique_text: row.model_evaluation[0].expert_critique_text || '',
+                    expert_pass: row.model_evaluation[0].expert_pass,
+                    improved_output: row.model_evaluation[0].improved_output
+                }
             })) || []
 
             setData(transformedData as JudgeData[])
 
             // Calculate scores
             const totalEntries = transformedData.length
-            const judgePassCount = transformedData.filter(row => row.judge_critique.pass === true).length
-            const expertPassCount = transformedData.filter(row => row.expert_critique.pass === true).length
+            const judgePassCount = transformedData.filter(row => row.evaluation.judge_pass === true).length
+            const expertPassCount = transformedData.filter(row => row.evaluation.expert_pass === true).length
             const matchingDecisions = transformedData.filter(
-                row => row.judge_critique.pass === row.expert_critique.pass
+                row => row.evaluation.judge_pass === row.evaluation.expert_pass
             ).length
 
             setScores({
@@ -87,19 +96,18 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
 
     const updateExpertCritique = async (index: number, pass: boolean | null) => {
         const row = data[index]
-        const modelOutputId = row.model_output.id
-
+        
         await supabase
-            .from('expert_critique')
-            .upsert({
-                model_output_id: modelOutputId,
-                pass,
-                critique_text: row.expert_critique.critique_text
+            .from('model_evaluation')
+            .update({
+                expert_pass: pass
             })
+            .eq('model_id', modelId)
+            .eq('synthetic_data_id', index + 1) // Assuming synthetic_data_id matches the index + 1
 
         // Update local state
         const newData = [...data]
-        newData[index].expert_critique.pass = pass
+        newData[index].evaluation.expert_pass = pass
         setData(newData)
     }
 
@@ -132,27 +140,28 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                         <TableHead>Output</TableHead>
                         <TableHead>LLM Judge Decision</TableHead>
                         <TableHead>Expert Decision</TableHead>
+                        <TableHead>Improved Output</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {data.map((row, index) => (
                         <TableRow key={index}>
                             <TableCell className="align-top">{row.synthetic_data.data}</TableCell>
-                            <TableCell className="align-top">{row.model_output.data}</TableCell>
+                            <TableCell className="align-top">{row.evaluation.model_output}</TableCell>
                             <TableCell className="align-top">
                                 <div className="space-y-2">
-                                    <p className="text-sm">{row.judge_critique.critique_text}</p>
+                                    <p className="text-sm">{row.evaluation.judge_critique_text}</p>
                                     <div className="flex gap-2">
                                         <Toggle
                                             disabled
-                                            pressed={row.judge_critique.pass === true}
+                                            pressed={row.evaluation.judge_pass === true}
                                             variant="outline"
                                         >
                                             Yes
                                         </Toggle>
                                         <Toggle
                                             disabled
-                                            pressed={row.judge_critique.pass === false}
+                                            pressed={row.evaluation.judge_pass === false}
                                             variant="outline"
                                         >
                                             No
@@ -162,10 +171,10 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                             </TableCell>
                             <TableCell className="align-top">
                                 <div className="space-y-2">
-                                    <p className="text-sm">{row.expert_critique.critique_text}</p>
+                                    <p className="text-sm">{row.evaluation.expert_critique_text}</p>
                                     <div className="flex gap-2">
                                         <Toggle
-                                            pressed={row.expert_critique.pass === true}
+                                            pressed={row.evaluation.expert_pass === true}
                                             onPressedChange={(pressed) =>
                                                 updateExpertCritique(index, pressed ? true : null)
                                             }
@@ -174,7 +183,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                                             Yes
                                         </Toggle>
                                         <Toggle
-                                            pressed={row.expert_critique.pass === false}
+                                            pressed={row.evaluation.expert_pass === false}
                                             onPressedChange={(pressed) =>
                                                 updateExpertCritique(index, pressed ? false : null)
                                             }
@@ -184,6 +193,9 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                                         </Toggle>
                                     </div>
                                 </div>
+                            </TableCell>
+                            <TableCell className="align-top">
+                                <p className="text-sm">{row.evaluation.improved_output}</p>
                             </TableCell>
                         </TableRow>
                     ))}

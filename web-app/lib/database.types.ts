@@ -9,58 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      expert_critique: {
-        Row: {
-          critique_text: string | null
-          model_output_id: number | null
-          pass: boolean | null
-        }
-        Insert: {
-          critique_text?: string | null
-          model_output_id?: number | null
-          pass?: boolean | null
-        }
-        Update: {
-          critique_text?: string | null
-          model_output_id?: number | null
-          pass?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "expert_critique_model_output_id_fkey"
-            columns: ["model_output_id"]
-            isOneToOne: false
-            referencedRelation: "model_output"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      judge_critique: {
-        Row: {
-          critique_text: string | null
-          model_output_id: number | null
-          pass: boolean | null
-        }
-        Insert: {
-          critique_text?: string | null
-          model_output_id?: number | null
-          pass?: boolean | null
-        }
-        Update: {
-          critique_text?: string | null
-          model_output_id?: number | null
-          pass?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "judge_critique_model_output_id_fkey"
-            columns: ["model_output_id"]
-            isOneToOne: false
-            referencedRelation: "model_output"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       model: {
         Row: {
           id: number
@@ -90,45 +38,60 @@ export type Database = {
           },
         ]
       }
-      model_output: {
+      model_evaluation: {
         Row: {
-          data: string | null
+          expert_critique_text: string | null
+          expert_pass: boolean | null
           id: number
+          improved_output: string | null
+          judge_critique_text: string | null
+          judge_pass: boolean | null
           model_id: number | null
+          model_output: string | null
           project_id: number | null
           synthetic_data_id: number | null
         }
         Insert: {
-          data?: string | null
+          expert_critique_text?: string | null
+          expert_pass?: boolean | null
           id?: never
+          improved_output?: string | null
+          judge_critique_text?: string | null
+          judge_pass?: boolean | null
           model_id?: number | null
+          model_output?: string | null
           project_id?: number | null
           synthetic_data_id?: number | null
         }
         Update: {
-          data?: string | null
+          expert_critique_text?: string | null
+          expert_pass?: boolean | null
           id?: never
+          improved_output?: string | null
+          judge_critique_text?: string | null
+          judge_pass?: boolean | null
           model_id?: number | null
+          model_output?: string | null
           project_id?: number | null
           synthetic_data_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "model_output_model_id_fkey"
+            foreignKeyName: "model_evaluation_model_id_fkey"
             columns: ["model_id"]
             isOneToOne: false
             referencedRelation: "model"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "model_output_project_id_fkey"
+            foreignKeyName: "model_evaluation_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "project"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "model_output_synthetic_data_id_fkey"
+            foreignKeyName: "model_evaluation_synthetic_data_id_fkey"
             columns: ["synthetic_data_id"]
             isOneToOne: false
             referencedRelation: "synthetic_data"
