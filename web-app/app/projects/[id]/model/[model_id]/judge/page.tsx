@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Toggle } from "@/components/ui/toggle"
 import { createClient } from '@/utils/supabase/client'
+import { Check, X } from "lucide-react"
 
 type JudgeData = {
     synthetic_data: { data: string }
@@ -94,21 +95,41 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         fetchData()
     }, [projectId, modelId, supabase])
 
-    const updateExpertCritique = async (index: number, pass: boolean | null) => {
+    const updateExpertCritique = async (index: number, updates: {
+        expert_pass?: boolean | null,
+        expert_critique_text?: string,
+        improved_output?: string
+    }) => {
         const row = data[index]
         
         await supabase
             .from('model_evaluation')
             .update({
-                expert_pass: pass
+                ...updates
             })
             .eq('model_id', modelId)
-            .eq('synthetic_data_id', index + 1) // Assuming synthetic_data_id matches the index + 1
+            .eq('synthetic_data_id', index + 1)
 
         // Update local state
         const newData = [...data]
-        newData[index].evaluation.expert_pass = pass
+        newData[index].evaluation = {
+            ...newData[index].evaluation,
+            ...updates
+        }
         setData(newData)
+    }
+
+    const updateJudgePrompt = async (newPrompt: string) => {
+        await supabase
+            .from('project')
+            .update({ judge_prompt: newPrompt })
+            .eq('id', projectId)
+
+        // Update local state
+        setProject({
+            ...project,
+            judge_prompt: newPrompt
+        })
     }
 
     return (
@@ -127,7 +148,12 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                         </div>
                         <div className="p-4 border rounded">
                             <h2 className="font-semibold">Judge Prompt</h2>
-                            <p className="text-sm">{project.judge_prompt}</p>
+                            <textarea
+                                className="w-full min-h-[100px] p-2 text-sm border rounded mt-2"
+                                value={project.judge_prompt || ''}
+                                onChange={(e) => updateJudgePrompt(e.target.value)}
+                                placeholder="Enter judge prompt..."
+                            />
                         </div>
                     </div>
                 </div>
@@ -140,6 +166,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                         <TableHead>Output</TableHead>
                         <TableHead>LLM Judge Decision</TableHead>
                         <TableHead>Expert Decision</TableHead>
+                        <TableHead>Agreement</TableHead>
                         <TableHead>Improved Output</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -156,46 +183,82 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                                             disabled
                                             pressed={row.evaluation.judge_pass === true}
                                             variant="outline"
+                                            className={`${row.evaluation.judge_pass === true ? "bg-green-100 text-green-700" : ""} 
+                                                      data-[state=on]:bg-green-100 data-[state=on]:text-green-700`}
                                         >
-                                            Yes
+                                            <Check className="h-4 w-4 mr-1" /> Pass
                                         </Toggle>
                                         <Toggle
                                             disabled
                                             pressed={row.evaluation.judge_pass === false}
                                             variant="outline"
+                                            className={`${row.evaluation.judge_pass === false ? "bg-red-100 text-red-700" : ""}
+                                                      data-[state=on]:bg-red-100 data-[state=on]:text-red-700`}
                                         >
-                                            No
+                                            <X className="h-4 w-4 mr-1" /> Fail
                                         </Toggle>
                                     </div>
                                 </div>
                             </TableCell>
                             <TableCell className="align-top">
                                 <div className="space-y-2">
-                                    <p className="text-sm">{row.evaluation.expert_critique_text}</p>
+                                    <textarea
+                                        className="w-full min-h-[100px] p-2 text-sm border rounded"
+                                        value={row.evaluation.expert_critique_text || ''}
+                                        onChange={(e) => updateExpertCritique(index, { 
+                                            expert_critique_text: e.target.value 
+                                        })}
+                                        placeholder="Enter expert feedback..."
+                                    />
                                     <div className="flex gap-2">
                                         <Toggle
                                             pressed={row.evaluation.expert_pass === true}
                                             onPressedChange={(pressed) =>
-                                                updateExpertCritique(index, pressed ? true : null)
+                                                updateExpertCritique(index, { 
+                                                    expert_pass: pressed ? true : null 
+                                                })
                                             }
                                             variant="outline"
+                                            className={`${row.evaluation.expert_pass === true ? "bg-green-100 text-green-700" : ""} 
+                                                      data-[state=on]:bg-green-100 data-[state=on]:text-green-700`}
                                         >
-                                            Yes
+                                            <Check className="h-4 w-4 mr-1" /> Pass
                                         </Toggle>
                                         <Toggle
                                             pressed={row.evaluation.expert_pass === false}
                                             onPressedChange={(pressed) =>
-                                                updateExpertCritique(index, pressed ? false : null)
+                                                updateExpertCritique(index, { 
+                                                    expert_pass: pressed ? false : null 
+                                                })
                                             }
                                             variant="outline"
+                                            className={`${row.evaluation.expert_pass === false ? "bg-red-100 text-red-700" : ""}
+                                                      data-[state=on]:bg-red-100 data-[state=on]:text-red-700`}
                                         >
-                                            No
+                                            <X className="h-4 w-4 mr-1" /> Fail
                                         </Toggle>
                                     </div>
                                 </div>
                             </TableCell>
                             <TableCell className="align-top">
-                                <p className="text-sm">{row.evaluation.improved_output}</p>
+                                {row.evaluation.judge_pass !== null && 
+                                 row.evaluation.expert_pass !== null && (
+                                    row.evaluation.judge_pass === row.evaluation.expert_pass ? (
+                                        <Check className="h-5 w-5 text-green-600" />
+                                    ) : (
+                                        <X className="h-5 w-5 text-red-600" />
+                                    )
+                                )}
+                            </TableCell>
+                            <TableCell className="align-top">
+                                <textarea
+                                    className="w-full min-h-[100px] p-2 text-sm border rounded"
+                                    value={row.evaluation.improved_output || ''}
+                                    onChange={(e) => updateExpertCritique(index, { 
+                                        improved_output: e.target.value 
+                                    })}
+                                    placeholder="Enter improved output..."
+                                />
                             </TableCell>
                         </TableRow>
                     ))}
