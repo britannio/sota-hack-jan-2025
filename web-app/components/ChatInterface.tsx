@@ -15,18 +15,10 @@ export default function ChatPage() {
       {
         id: 'welcome',
         role: 'assistant',
-        content: "Hello! I'm Claude, an AI assistant. How can I help you today?"
+        content: "Hello! I'm IO, an AI assistant. How can I help you today?"
       }
     ]
   });
-
-//   const scrollToBottom = () => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-//   };
-
-//   useEffect(() => {
-//     scrollToBottom();
-//   }, [messages]);
 
   return (
     <div className="flex flex-col max-h-[80vh] min-h-[70vh] max-w-2xl mx-auto p-4">
