@@ -138,18 +138,28 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold mb-4">Model Evaluation</h1>
                     <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="p-4 border rounded">
-                            <h2 className="font-semibold">Overall Score</h2>
-                            <p>{scores.overall.toFixed(1)}%</p>
+                        <div className="p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex flex-col">
+                                <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Overall Score</h2>
+                                <div className="mt-2 flex items-baseline">
+                                    <p className="text-3xl font-bold text-gray-900">{scores.overall.toFixed(1)}%</p>
+                                    <span className="ml-2 text-sm text-gray-500">pass rate</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="p-4 border rounded">
-                            <h2 className="font-semibold">Judge Quality</h2>
-                            <p>{scores.judgeQuality.toFixed(1)}%</p>
+                        <div className="p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex flex-col">
+                                <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Judge Quality</h2>
+                                <div className="mt-2 flex items-baseline">
+                                    <p className="text-3xl font-bold text-gray-900">{scores.judgeQuality.toFixed(1)}%</p>
+                                    <span className="ml-2 text-sm text-gray-500">agreement</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="p-4 border rounded">
-                            <h2 className="font-semibold">Judge Prompt</h2>
+                        <div className="p-4 border rounded-lg bg-white shadow-sm">
+                            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Judge Prompt</h2>
                             <textarea
-                                className="w-full min-h-[100px] p-2 text-sm border rounded mt-2"
+                                className="w-full min-h-[100px] p-2 text-sm border rounded mt-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 value={project.judge_prompt || ''}
                                 onChange={(e) => updateJudgePrompt(e.target.value)}
                                 placeholder="Enter judge prompt..."
