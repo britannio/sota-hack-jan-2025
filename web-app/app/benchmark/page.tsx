@@ -7,18 +7,31 @@ import { useEffect, useState } from 'react'
 interface ModelCard {
     id: number
     score: number | null
+    version_number: number
 }
 
 export default function BenchmarkPage() {
     const [models, setModels] = useState<ModelCard[]>([])
+
+    const handleDelete = async (modelId: number) => {
+        const client = createClient()
+        const { error } = await client
+            .from('model')
+            .delete()
+            .eq('id', modelId)
+
+        if (!error) {
+            setModels(models.filter(model => model.id !== modelId))
+        }
+    }
 
     useEffect(() => {
         const fetchModels = async () => {
             const client = createClient()
             const { data, error } = await client
                 .from('model')
-                .select('id, score')
-                .order('score', { ascending: false })
+                .select('id, score, version_number')
+                .order('version_number', { ascending: true })
 
             if (!error && data) {
                 setModels(data)
@@ -27,6 +40,8 @@ export default function BenchmarkPage() {
 
         fetchModels()
     }, [])
+
+    const projectId = 1
 
     return (
         <div className="min-h-screen flex justify-center">
@@ -49,13 +64,19 @@ export default function BenchmarkPage() {
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <span className="text-lg font-semibold text-gray-500">
-                                        {model.id}.
+                                        {model.version_number}.
                                     </span>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-4">
                                     <span className="text-2xl font-bold text-blue-600">
                                         {model.score === null ? 'Not rated' : `Score ${model.score}%`}
                                     </span>
+                                    <button
+                                        onClick={() => handleDelete(model.id)}
+                                        className="px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+                                    >
+                                        Delete
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -63,7 +84,7 @@ export default function BenchmarkPage() {
 
                     <AddModelButton onModelAdded={(newModel) => {
                         setModels([...models, newModel])
-                    }} />
+                    }} projectId={projectId} model_count={models.length} />
                 </div>
             </div>
         </div>

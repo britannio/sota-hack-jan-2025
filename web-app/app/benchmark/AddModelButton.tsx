@@ -4,16 +4,22 @@ import { createClient } from '@/utils/supabase/client'
 import { Plus } from 'lucide-react'
 
 interface AddModelButtonProps {
-    onModelAdded: (model: { id: number; score: number | null }) => void
+    onModelAdded: (model: { id: number; score: number | null, version_number: number }) => void,
+    projectId: number,
+    model_count: number
 }
 
-export default function AddModelButton({ onModelAdded }: AddModelButtonProps) {
+export default function AddModelButton({ onModelAdded, projectId, model_count }: AddModelButtonProps) {
     const handleAddModel = async () => {
         const client = createClient()
         const { data: newModel, error } = await client
             .from('model')
-            .insert({ score: null })
-            .select('id, score')
+            .insert({ 
+                score: null, 
+                version_number: model_count + 1,
+                project_id: projectId
+            })
+            .select('id, score, version_number')
             .single()
 
         if (!error && newModel) {
