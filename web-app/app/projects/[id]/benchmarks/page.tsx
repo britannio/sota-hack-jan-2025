@@ -2,7 +2,7 @@
 
 import { createClient } from '@/utils/supabase/client'
 import AddModelButton from '../AddModelButton'
-import { useEffect, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import ProjectTabs from '../components/ProjectTabs'
 
@@ -15,10 +15,11 @@ interface ModelCard {
 export default function BenchmarkPage({
     params
 }: {
-    params: { id: string }
+    params: Promise<{ id: string }>
 }) {
+    const { id } = use(params)
     const [models, setModels] = useState<ModelCard[]>([])
-    const projectId = parseInt(params.id)
+    const projectId = parseInt(id)
 
     const handleDelete = async (modelId: number) => {
         const client = createClient()
