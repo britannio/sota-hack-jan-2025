@@ -1,6 +1,6 @@
 from smolagents import CodeAgent, LiteLLMModel
 import os
-import csv
+import json
 # from smolagents import tool
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -31,11 +31,10 @@ def text2regex(text: str) -> str:
     return agent.run(f"""<request>{text}</request>
 Generate a regex pattern based on the request.""")
     
-# Open the input.csv file
-with open("input.csv", "r") as file:
-    reader = csv.reader(file)
-    for row in reader:
-        input = row[0]
+# Open the input.json file
+with open("input.json", "r") as file:
+    data = json.load(file)
+    for input in data:
         response = text2regex(input)
         print(f"Input: {input}, Response: {response}")
 
