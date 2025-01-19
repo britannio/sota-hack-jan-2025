@@ -68,12 +68,14 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                 `)
                 .eq('project_id', projectId)
                 .eq('model_evaluation.model_id', modelId)
+                .order('id', { ascending: true })
 
             // Transform data for table
             const transformedData = evaluationData?.map(row => ({
                 synthetic_data: { id: row.id, data: row.data || '' },
                 evaluation: {
-                    id: row.id,
+                    // id: row.id,
+                    id: row.model_evaluation[0].id,
                     model_output: row.model_evaluation[0].model_output || '',
                     judge_critique_text: row.model_evaluation[0].judge_critique_text || '',
                     judge_pass: row.model_evaluation[0].judge_pass,
@@ -137,8 +139,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
             .update({
                 ...updates
             })
-            .eq('model_id', modelId)
-            .eq('synthetic_data_id', index + 1)
+            .eq('id', row.evaluation.id)
 
         // Update local state
         const newData = [...data]
@@ -290,16 +291,30 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         setIsJudging(true)
         
         try {
-            // Mark all unevaluated rows as judging
-            const unevaluatedIds = data
+            // Get unevaluated rows
+            let unevaluatedIds = data
                 .filter(row => row.evaluation.judge_pass === null)
                 .map(row => row.evaluation.id)
             
+            // If all evaluations have been judged, reset them all and get all IDs
             if (unevaluatedIds.length === 0) {
-                alert('All evaluations have already been judged')
-                return
+                // Reset all evaluations in a transaction
+                const { error } = await supabase
+                    .from('model_evaluation')
+                    .update({ 
+                        judge_pass: null,
+                        judge_critique_text: null,
+                        judging: false 
+                    })
+                    .eq('model_id', modelId)
+
+                if (error) throw error
+
+                // Get all evaluation IDs after reset
+                unevaluatedIds = data.map(row => row.evaluation.id)
             }
 
+            // Mark selected evaluations as judging
             await supabase
                 .from('model_evaluation')
                 .update({ judging: true })
