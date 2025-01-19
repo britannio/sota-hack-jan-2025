@@ -41,21 +41,31 @@ Ensure that you mention this in your critique message`
       .replace('{{MODEL_OUTPUT}}',
         modelEvaluation.model_output ?? 'NO OUTPUT PRODUCED BY THE MODEL')
 
+    const critiqueAssistantPrefix = `<critique><message>`
     const response = await generateText({
       model: anthropic('claude-3-5-sonnet-latest'),
       messages: [
-        { role: 'user', content: judgePrompt }
+        { role: 'user', content: judgePrompt },
+        { role: 'assistant', content: `Here is the critique: ${critiqueAssistantPrefix}` }
       ],
       maxTokens: 8192,
     })
 
     let critique = response.text
+    critique = `${critiqueAssistantPrefix}${critique}`
+    // parse 'message' and 'outcome' from the critique
+    const critiqueMessage = critique.match(/<message>([\s\S]*?)<\/message>/)?.[1]
+    const critiqueOutcome = critique.match(/<outcome>([\s\S]*?)<\/outcome>/)?.[1]
+    console.log(`CRITIQUE: ${critiqueMessage}`)
+    console.log(`OUTCOME: ${critiqueOutcome}`)
+    const pass = critiqueOutcome === 'good'
     // remove closing </critique>
-    critique = critique.replace(/<\/critique>/, '')
+    // critique = critique.replace(/<\/critique>/, '')
+    // console.log(`CRITIQUE: ${critique}`)
     // parse the critique as json
-    const critiqueJson = JSON.parse(critique)
-    const critiqueMessage = critiqueJson.critique
-    const pass = critiqueJson.outcome === 'good'
+    // const critiqueJson = JSON.parse(critique)
+    // const critiqueMessage = critiqueJson.critique
+    // const pass = critiqueJson.outcome === 'good'
 
     await supabase
       .from('model_evaluation')
@@ -89,13 +99,13 @@ Here are some example evaluations for a different task where a DSL is evaluated:
 }
 </output>
 <critique>
-{
-  "critique": "The query correctly filters for traces with an IP address of 10.0.2.90 
+<message>
+The query correctly filters for traces with an IP address of 10.0.2.90 
    and counts the occurrences of those traces, grouped by trace.trace_id. The response 
    is good as it meets the requirement of showing traces from a specific IP address 
    without additional complexities.",
-  "outcome": "good"
-}
+</message>
+<outcome>good</outcome>
 </critique>
 </example-1>
 
@@ -109,13 +119,13 @@ Here are some example evaluations for a different task where a DSL is evaluated:
 }
 </output>
 <critique>
-{
-  "critique": "While the query attempts to find the slowest trace using MAX(duration_ms) 
+<message>
+While the query attempts to find the slowest trace using MAX(duration_ms) 
    and ordering correctly, it fails to group by trace.trace_id. Without this grouping, 
    the query only shows the MAX(duration_ms) measurement over time, not the actual 
-   slowest trace.",
-  "outcome": "bad"
-}
+   slowest trace.
+</message>
+<outcome>bad</outcome>
 </critique>
 </example-2>
 
@@ -130,12 +140,12 @@ Here are some example evaluations for a different task where a DSL is evaluated:
 }
 </output>
 <critique>
-{
-  "critique": "While the query correctly counts window-hash occurrences, the time_range 
+<message>
+While the query correctly counts window-hash occurrences, the time_range 
    of 3600 seconds (1 hour) is insufficient for per-hour analysis. When we say 'per hour', 
-   we need a time_range of at least 36000 seconds to show meaningful hourly patterns.",
-  "outcome": "bad"
-}
+   we need a time_range of at least 36000 seconds to show meaningful hourly patterns.
+</message>
+<outcome>bad</outcome>
 </critique>
 </example-3>
 
@@ -150,5 +160,4 @@ Note that the task differs from the examples above so the critique should be tai
 </input>
 <output>
 {{MODEL_OUTPUT}}
-</output>
-<critique>`
+</output>`
