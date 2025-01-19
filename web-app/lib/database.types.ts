@@ -103,22 +103,19 @@ export type Database = {
         Row: {
           id: number
           judge_prompt: string | null
-          model_input_dimensions: Json | null
-          model_summary: string | null
+          model_taxonomy: string | null
           name: string | null
         }
         Insert: {
           id?: never
           judge_prompt?: string | null
-          model_input_dimensions?: Json | null
-          model_summary?: string | null
+          model_taxonomy?: string | null
           name?: string | null
         }
         Update: {
           id?: never
           judge_prompt?: string | null
-          model_input_dimensions?: Json | null
-          model_summary?: string | null
+          model_taxonomy?: string | null
           name?: string | null
         }
         Relationships: []
