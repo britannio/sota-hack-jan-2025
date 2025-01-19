@@ -31,6 +31,18 @@ def text2regex(text: str) -> str:
     agent = CodeAgent(tools=[], model=model, add_base_tools=False)
     return agent.run(f"""<request>{text}</request>
 Generate a regex pattern based on the request.""")
+    
+    
+def text2code(text: str) -> str:
+    """
+    I want you to act as a code generator.
+    Your role is to generate code that can be easily copied and pasted into an IDE.
+    You should provide the code in a format that can be easily copied and pasted into a programming language.
+    Do not write explanations or examples of how the code works; simply provide a string response with the code.
+    """
+    agent = CodeAgent(tools=[], model=model, add_base_tools=False)
+    return agent.run(f"""<request>{text}</request>
+Generate code based on the request.""")
 
 
 def process_dataset(
@@ -64,7 +76,7 @@ def process_dataset(
 
 
 if __name__ == "__main__":
-    process_dataset("input.json", "output.json", text2regex)
+    process_dataset("input.json", "output.json", text2code)
 
 
 # response = text2regex("I want to find all the numbers in the text that are greater than 100.")
