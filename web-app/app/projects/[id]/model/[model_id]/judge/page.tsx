@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Toggle } from "@/components/ui/toggle"
 import { createClient } from '@/utils/supabase/client'
-import { Check, X, Download } from "lucide-react"
+import { Check, X, Download, Loader2 } from "lucide-react"
 
 type JudgeData = {
     synthetic_data: { id: number, data: string }
@@ -23,6 +23,7 @@ type JudgeData = {
         expert_critique_text: string
         expert_pass: boolean | null
         improved_output: string | null
+        judging: boolean
     }
 }
 
@@ -34,6 +35,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
     const [project, setProject] = useState<any>(null)
     const [scores, setScores] = useState({ overall: 0, judgeQuality: 0 })
     const supabase = createClient()
+    const [isJudging, setIsJudging] = useState(false)
     //   const supabase = createClientComponentClient<Database>()
 
     useEffect(() => {
@@ -60,7 +62,8 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                         judge_pass,
                         expert_critique_text,
                         expert_pass,
-                        improved_output
+                        improved_output,
+                        judging
                     )
                 `)
                 .eq('project_id', projectId)
@@ -76,7 +79,8 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                     judge_pass: row.model_evaluation[0].judge_pass,
                     expert_critique_text: row.model_evaluation[0].expert_critique_text || '',
                     expert_pass: row.model_evaluation[0].expert_pass,
-                    improved_output: row.model_evaluation[0].improved_output
+                    improved_output: row.model_evaluation[0].improved_output,
+                    judging: row.model_evaluation[0].judging
                 }
             })) || []
 
@@ -97,6 +101,28 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         }
 
         fetchData()
+
+        // Subscribe to realtime updates
+        const channel = supabase
+            .channel('model_evaluation_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'model_evaluation',
+                    filter: `model_id=eq.${modelId}`
+                },
+                async (payload) => {
+                    // Refresh data when changes occur
+                    fetchData()
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [projectId, modelId, supabase])
 
     const updateExpertCritique = async (index: number, updates: {
@@ -243,6 +269,54 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         window.location.reload()
     }
 
+    const judgeEvaluation = async (evaluationId: number) => {
+        try {
+            const response = await fetch('/api/judge', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ evaluationId })
+            })
+            
+            if (!response.ok) {
+                throw new Error('Failed to judge evaluation')
+            }
+        } catch (error) {
+            console.error('Error judging:', error)
+            alert('Failed to judge evaluation')
+        }
+    }
+
+    const runJudge = async () => {
+        setIsJudging(true)
+        
+        try {
+            // Mark all unevaluated rows as judging
+            const unevaluatedIds = data
+                .filter(row => row.evaluation.judge_pass === null)
+                .map(row => row.evaluation.id)
+            
+            if (unevaluatedIds.length === 0) {
+                alert('All evaluations have already been judged')
+                return
+            }
+
+            await supabase
+                .from('model_evaluation')
+                .update({ judging: true })
+                .in('id', unevaluatedIds)
+
+            // Process each evaluation sequentially
+            for (const evaluationId of unevaluatedIds) {
+                await judgeEvaluation(evaluationId)
+            }
+        } catch (error) {
+            console.error('Error in run judge:', error)
+            alert('Failed to complete judging')
+        } finally {
+            setIsJudging(false)
+        }
+    }
+
     return (
         <div className="p-8">
             {project && (
@@ -269,6 +343,14 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                             >
                                 <Download className="h-4 w-4" />
                                 Download Inputs
+                            </button>
+                            <button
+                                onClick={runJudge}
+                                disabled={isJudging}
+                                className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isJudging && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Run Judge
                             </button>
                         </div>
                     </div>
@@ -313,6 +395,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                         <TableHead>Expert Decision</TableHead>
                         <TableHead>Agreement</TableHead>
                         <TableHead>Improved Output</TableHead>
+                        <TableHead>Status</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -404,6 +487,18 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                                     })}
                                     placeholder="Enter improved output..."
                                 />
+                            </TableCell>
+                            <TableCell className="align-top">
+                                {row.evaluation.judging ? (
+                                    <div className="flex items-center">
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Judging...
+                                    </div>
+                                ) : row.evaluation.judge_pass === null ? (
+                                    "Pending"
+                                ) : (
+                                    "Complete"
+                                )}
                             </TableCell>
                         </TableRow>
                     ))}
