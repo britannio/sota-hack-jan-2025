@@ -1,107 +1,108 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { useState, useCallback, useEffect } from 'react';
+import { useChat } from 'ai/react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import ProjectTabs from './components/ProjectTabs'
+import TaxonomyPanel from '@/components/TaxonomyPanel';
+import ChatInterface from '@/components/ChatInterface';
+import type { StreamingTaxonomyState } from '@/components/types';
 
 interface Project {
-  id: string
-  name: string
-  model_summary?: string
-  model_input_dimensions?: any
-  judge_prompt?: string
+  name: string;
+  model_summary: string;
 }
 
-export default function ProjectSetup() {
-  const params = useParams()
-  const [project, setProject] = useState<Project | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+export default function ProjectPage() {
+  const [project, setProject] = useState<Project>({
+    name: '',
+    model_summary: ''
+  });
+
+  const [taxonomyState, setTaxonomyState] = useState<StreamingTaxonomyState>({
+    isStreaming: false,
+    content: ''
+  });
+
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    api: '/api/chat',
+    onFinish: (message) => {
+      const specMatch = message.content.match(/```spec\n([\s\S]*?)```/);
+      if (specMatch) {
+        setTaxonomyState({
+          isStreaming: false,
+          content: specMatch[1]
+        });
+      }
+    }
+  });
+
+  const handleUpdate = (field: keyof Project, value: string) => {
+    setProject(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleMessage = useCallback((content: string) => {
+    if (content.includes('```spec\n')) {
+      const specStartIndex = content.indexOf('```spec\n');
+      const specEndIndex = content.indexOf('```', specStartIndex + 7);
+      
+      if (specEndIndex !== -1) {
+        const specContent = content.substring(specStartIndex + 8, specEndIndex);
+        setTaxonomyState({
+          isStreaming: false,
+          content: specContent
+        });
+      } else {
+        const specContent = content.substring(specStartIndex + 8);
+        setTaxonomyState({
+          isStreaming: true,
+          content: specContent
+        });
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchProject = async () => {
-      const { data, error } = await supabase
-        .from('project')
-        .select('*')
-        .eq('id', params.id)
-        .single()
-
-      if (error) {
-        console.error('Error fetching project:', error)
-        return
-      }
-
-      setProject(data)
-      setIsLoading(false)
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage?.role === 'assistant') {
+      handleMessage(lastMessage.content);
     }
-
-    fetchProject()
-  }, [params.id, supabase])
-
-  const handleUpdate = async (field: keyof Project, value: any) => {
-    if (!project) return
-
-    try {
-      const { error } = await supabase
-        .from('project')
-        .update({ [field]: value })
-        .eq('id', project.id)
-
-      if (error) throw error
-
-      setProject({ ...project, [field]: value })
-    } catch (error) {
-      console.error('Error updating project:', error)
-    }
-  }
-
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
-
-  if (!project) {
-    return <div>Project not found</div>
-  }
+  }, [messages, handleMessage]);
 
   return (
     <>
       <ProjectTabs />
       <div className="space-y-6">
+
         <Card>
           <CardHeader>
-            <CardTitle>Project Setup</CardTitle>
-            <CardDescription>Configure your model evaluation project</CardDescription>
+            <CardTitle>Input Taxonomy Generation</CardTitle>
+            <CardDescription>Chat with IO to generate your input taxonomy</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Project Name
-              </label>
-              <Input
-                id="name"
-                value={project.name}
-                onChange={(e) => handleUpdate('name', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="summary" className="text-sm font-medium">
-                Model Summary
-              </label>
-              <Textarea
-                id="summary"
-                placeholder="Describe the model you're evaluating..."
-                value={project.model_summary || ''}
-                onChange={(e) => handleUpdate('model_summary', e.target.value)}
-              />
+          <CardContent className="h-[calc(100vh-200px)]">
+            <div className="flex flex-col lg:flex-row gap-4 h-full">
+              <div className="flex-1 min-w-0">
+                <ChatInterface 
+                  messages={messages}
+                  input={input}
+                  handleInputChange={handleInputChange}
+                  handleSubmit={handleSubmit}
+                />
+              </div>
+              <div> {/* Adjust the width of the TaxonomyPanel */}
+                <TaxonomyPanel 
+                  taxonomyState={taxonomyState}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </>
-  )
-} 
+  );
+}
