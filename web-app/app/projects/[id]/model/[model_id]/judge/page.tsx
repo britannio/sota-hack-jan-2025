@@ -36,6 +36,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
     const [scores, setScores] = useState({ overall: 0, judgeQuality: 0 })
     const supabase = createClient()
     const [isJudging, setIsJudging] = useState(false)
+    const [isOptimizing, setIsOptimizing] = useState(false)
     //   const supabase = createClientComponentClient<Database>()
 
     useEffect(() => {
@@ -332,6 +333,35 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         }
     }
 
+    const optimizeJudge = async () => {
+        setIsOptimizing(true)
+        try {
+            const response = await fetch('/api/judge/optimise', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId })
+            })
+            
+            if (!response.ok) {
+                throw new Error('Failed to optimize judge')
+            }
+
+            // Fetch updated project data after optimization
+            const { data: projectData } = await supabase
+                .from('project')
+                .select('*')
+                .eq('id', projectId)
+                .single()
+
+            setProject(projectData)
+        } catch (error) {
+            console.error('Error optimizing:', error)
+            alert('Failed to optimize judge')
+        } finally {
+            setIsOptimizing(false)
+        }
+    }
+
     return (
         <div className="p-8">
             {project && (
@@ -358,6 +388,14 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
                             >
                                 <Download className="h-4 w-4" />
                                 Download Inputs
+                            </button>
+                            <button
+                                onClick={optimizeJudge}
+                                disabled={isOptimizing}
+                                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isOptimizing && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Optimize Judge
                             </button>
                             <button
                                 onClick={runJudge}
