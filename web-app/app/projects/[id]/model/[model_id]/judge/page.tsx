@@ -14,8 +14,9 @@ import { createClient } from '@/utils/supabase/client'
 import { Check, X, Download } from "lucide-react"
 
 type JudgeData = {
-    synthetic_data: { data: string }
+    synthetic_data: { id: number, data: string }
     evaluation: {
+        id: number,
         model_output: string
         judge_critique_text: string
         judge_pass: boolean | null
@@ -50,8 +51,10 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
             const { data: evaluationData } = await supabase
                 .from('synthetic_data')
                 .select(`
+                    id,
                     data,
                     model_evaluation!inner (
+                        id,
                         model_output,
                         judge_critique_text,
                         judge_pass,
@@ -65,8 +68,9 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
 
             // Transform data for table
             const transformedData = evaluationData?.map(row => ({
-                synthetic_data: { data: row.data || '' },
+                synthetic_data: { id: row.id, data: row.data || '' },
                 evaluation: {
+                    id: row.id,
                     model_output: row.model_evaluation[0].model_output || '',
                     judge_critique_text: row.model_evaluation[0].judge_critique_text || '',
                     judge_pass: row.model_evaluation[0].judge_pass,
@@ -133,7 +137,10 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
     }
 
     const downloadInputs = () => {
-        const inputs = data.map(row => row.synthetic_data.data)
+        const inputs = data.map((row, index) => ({
+            id: row.evaluation.id || "xxx",
+            data: row.synthetic_data.data
+        }))
         const blob = new Blob([JSON.stringify(inputs, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
