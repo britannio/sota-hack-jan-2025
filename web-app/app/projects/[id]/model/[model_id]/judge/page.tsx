@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Toggle } from "@/components/ui/toggle"
 import { createClient } from '@/utils/supabase/client'
-import { Check, X } from "lucide-react"
+import { Check, X, Download } from "lucide-react"
 
 type JudgeData = {
     synthetic_data: { data: string }
@@ -132,11 +132,33 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         })
     }
 
+    const downloadInputs = () => {
+        const inputs = data.map(row => row.synthetic_data.data)
+        const blob = new Blob([JSON.stringify(inputs, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `inputs-project-${projectId}-model-${modelId}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+    }
+
     return (
         <div className="p-8">
             {project && (
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold mb-4">Model Evaluation</h1>
+                    <div className="flex justify-between items-center mb-4">
+                        <h1 className="text-2xl font-bold">Model Evaluation</h1>
+                        <button
+                            onClick={downloadInputs}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                        >
+                            <Download className="h-4 w-4" />
+                            Download Inputs
+                        </button>
+                    </div>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex flex-col">
