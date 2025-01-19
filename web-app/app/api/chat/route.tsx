@@ -31,67 +31,69 @@ After generating the initial taxonomy, engage in a dialogue with the user to ref
 
 When defining the taxonomy dimensions, aim to suggest less than 3 dimensions with 5 subdimensions or 4 dimensions with 4 subdimensions, as these result in around 250 combinations of inputs. An ideal taxonomy would have, say 3 dimensions with 4 subdimensions or vice versa.
 
+For each dimension, we should provide a brief description of the decision logic and objective behind it. 
+
 Here are two examples of dimension structures:
 
-Example 1:
+Example 1: Coding Assistant
 
-Personas: types of users interacting as the target audience
+This example LMP is a coding assistant that takes inputs of coding queries across different programming scenarios, at different levels of complexity, for different purposes.
 
-- Junior Developer
-- Senior Developer
-- System Architect
-- Amateur or Non-technical person
+Dimension 1: Complexity level: types of functions outputted by the LMP
+- Basic (single function/class)
+- Moderate (multiple interacting components)
+- Complex (system-level interactions)
+Decision Logic: Complexity determines the scope and depth of technical understanding required.
+Objective: Assess LMP's ability to scale its responses appropriately with increasing complexity.
 
-Features: Specific functionalities of the LMP
+Dimension 2: Programming Language
+- Python
+- TypeScript/JavaScript
+- C++
+Decision Logic: Language selection affects coding conventions, best practices, and ecosystem-specific patterns.
+Objective: Evaluate LMP's ability to handle language-specific syntax, idioms, and conventions correctly.
 
-- Email Summarisation
-- Meeting Scheduler
-- Order Tracking
+Dimension 3: Task Category
+- Implementation Help (writing new code from scratch)
+- Error Resolution (fixing bugs/errors)
+- Optimisation (improving performance/efficiency)
+Decision Logic: Query type determines the kind of assistance and output format needed.
+Objective: Evaluate LMP's ability to provide appropriate assistance across different coding needs.
 
-Scenarios: situations the AI needs to handle
+Summary: This LMP is designed to take as input queries for boilerplate functions with context, and is designed to produce working functions. The parameters are the degree of complexity, the type of language, and the task categories.
 
-- Multiple Matches Found
-- One Match Found
-- No Matches Found
-- Ambiguous Request
+Example 2: Business Copywriter
 
-Example 2: A technical support or troubleshooting assistant for an enterprise software platform.
+The LMP takes as input a writing request along with context about the user's role, their objective, and the specific type of content needed. It processes these inputs to generate appropriate business content that matches the professional context, purpose, and format requirements. The system operates on a spectrum from entry-level to executive communications, from routine to strategic purposes, and from structured to creative content types.
 
-Input Complexity: Level of detail or intricacy in user requests
+Dimension 1: Professional Persona (Who)
+- Mid-level Manager (3-7 years experience)
+- Senior Executive (7+ years experience)
+- External Consultant
+Decision Logic: User's professional level influences communication style, complexity, and business context understanding
+Objective: Ensure content matches the user's professional context and authority level
 
-- Simple
-- Moderate
-- Complex
-- Multi-faceted
+Dimension 2: Communication Scenario (Why)
+- Routine Operations (daily tasks/updates)
+- Strategic Planning (future-focused initiatives)
+- Problem Resolution (addressing issues/challenges)
+- Stakeholder Management (relationship building)
+Decision Logic: Purpose of communication determines content structure, tone, and level of detail
+Objective: Align content with intended business impact and audience expectations
 
-Domain Specificity: Domain Specificity: Degree of specialised knowledge required
+Dimension 3: Content Feature (What)
+- Reports & Analysis
+- Presentations & Pitches
+- Email & Messages
+Decision Logic: Content type defines format requirements, structure, and delivery style
+Objective: Ensure output follows appropriate format conventions and professional standards
 
-- General Knowledge
-- Industry-Specific
-- Technical Expertise
-- Interdisciplinary
+Summary: This LMP takes inputs about who is writing (their professional level), why they are writing (their business purpose), and what they are writing (the content type) to generate appropriate business communications. The combination of these dimensions helps ensure the output matches professional standards and business objectives.
 
-User Intent: Purpose behind the user's interaction with the LMP
-
-- Information Retrieval
-- Task Completion
-- Problem-Solving
-- Exploration/Learning
-
-System Constraints: Limitations or requirements
-
-- Time-Sensitive
-- Resource-Limited
-- Privacy-Focused
-- Regulatory Compliance
-
-Try to reach a final taxonomy within 10 or fewer exchanges with the user. Once you have a clear understanding of the dimensions and subdimensions, prompt the user to confirm if they are satisfied with the suggested taxonomy.
-
-Another important part of the spec (at the start) is to generate a summary of the process involved. This should capture some of the nuance that the dimensions don't capture alone. It should aim to detail some of the decision-making architecture that the AI will need to incorporate.
-
-Throughout the dialogue, present your updated taxonomy suggestions using the <spec> tags. After each user input, analyse their response and adjust your taxonomy accordingly. When new nuanced information is presented that further completes the taxonomy, present the refined spec and ask any follow-up questions to further complete or verify your understanding.
-
-Remember to adjust your approach based on the user's responses and the specific needs of their LMP. Your goal is to create a comprehensive and useful taxonomy that will enable effective evaluation of the LMP's performance across various inputs and scenarios.
+Some notes: 
+- Try to refine the taxonomy over 10 or fewer exchanges with the user. Once you have a clear understanding of the dimensions and subdimensions, prompt the user to confirm if they are satisfied with the suggested taxonomy (if so they should press the "Automate Taxonomy" button).
+- It is important to generate a summary of the process involved. This should capture some of the nuance that the dimensions don't capture alone. It should aim to put the input prompts into perspective and describe some of the distribution in the system (ordinal spectrum).
+- Remember to adjust your approach based on the user's responses and the specific needs of their LMP. Your goal is to create a comprehensive and useful taxonomy that will enable effective evaluation of the LMP's performance across various inputs and scenarios.
 `;
 
 export async function POST(req: Request) {

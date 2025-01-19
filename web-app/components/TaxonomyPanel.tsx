@@ -1,14 +1,17 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { StreamingTaxonomyState } from './types';
 
 interface TaxonomyPanelProps {
-  taxonomyState: StreamingTaxonomyState;
-}
-
-const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState }) => {
+    taxonomyState: StreamingTaxonomyState;
+    onUpdateTaxonomy?: (newContent: string) => void;  // Add this prop
+  }
+  
+const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState, onUpdateTaxonomy }) => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const [userInput, setUserInput] = useState('');
 
   // Auto-scroll to bottom when content changes
   useEffect(() => {
@@ -16,6 +19,14 @@ const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState }) => {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [taxonomyState.content, taxonomyState.isStreaming]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (userInput.trim() && !taxonomyState.isStreaming && onUpdateTaxonomy) {
+      onUpdateTaxonomy(taxonomyState.content + '\n' + userInput.trim());
+      setUserInput('');
+    }
+  };
 
   return (
     <Card className="h-full w-96 flex flex-col">
@@ -36,6 +47,25 @@ const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState }) => {
         >
           {taxonomyState.content || "No taxonomy generated yet. Chat with IO to generate one!"}
         </div>
+        <form onSubmit={handleSubmit} className="mt-4">
+          <div className="flex gap-2">
+            <Input 
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Add to taxonomy..."
+              disabled={taxonomyState.isStreaming}
+              className="flex-1"
+            />
+            <Button 
+              type="submit"
+              disabled={taxonomyState.isStreaming || !userInput.trim()}
+              variant="secondary"
+            >
+              Add
+            </Button>
+          </div>
+        </form>
       </CardContent>
       <CardFooter className="border-t pt-4 flex-none">
         <Button 
