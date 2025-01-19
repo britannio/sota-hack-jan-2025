@@ -5,13 +5,16 @@ import { useState, useCallback, useEffect } from 'react';
 import ChatInterface from '@/components/ChatInterface';
 import TaxonomyPanel from '@/components/TaxonomyPanel';
 import type { StreamingTaxonomyState } from '@/components/types';
+import { useParams } from 'next/navigation';
 
 export default function ChatPage() {
+  const params = useParams();
+  const projectId = params.id ? parseInt(params.id as string) : undefined;
   const [taxonomyState, setTaxonomyState] = useState<StreamingTaxonomyState>({
     isStreaming: false,
     content: ''
   });
-
+  
   const { messages, input, handleInputChange, handleSubmit } = useChat({
     api: '/api/chat',
     onFinish: (message) => {
@@ -53,6 +56,11 @@ export default function ChatPage() {
     }
   }, [messages, handleMessage]);
 
+    // If no projectId is available, you might want to show an error or redirect
+    if (!projectId) {
+        return <div>No project ID provided</div>;
+      }
+      
   return (
     <div className="h-screen p-4 max-w-[2000px] mx-auto">
       <div className="flex gap-4 h-[calc(100vh-2rem)]">
@@ -67,6 +75,7 @@ export default function ChatPage() {
         <div className="w-96">
           <TaxonomyPanel 
             taxonomyState={taxonomyState}
+            projectId={projectId}
           />
         </div>
       </div>

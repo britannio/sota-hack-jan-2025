@@ -9,6 +9,7 @@ import ProjectTabs from './components/ProjectTabs'
 import TaxonomyPanel from '@/components/TaxonomyPanel';
 import ChatInterface from '@/components/ChatInterface';
 import type { StreamingTaxonomyState } from '@/components/types';
+import { useParams } from 'next/navigation';
 
 interface Project {
   name: string;
@@ -16,6 +17,9 @@ interface Project {
 }
 
 export default function ProjectPage() {
+  const params = useParams();
+  const projectId = params.id ? parseInt(params.id as string) : undefined;
+
   const [project, setProject] = useState<Project>({
     name: '',
     model_summary: ''
@@ -74,6 +78,10 @@ export default function ProjectPage() {
     }
   }, [messages, handleMessage]);
 
+  if (!projectId) {
+    return <div>No project ID provided</div>;
+  }
+
   return (
     <>
       <ProjectTabs />
@@ -97,6 +105,7 @@ export default function ProjectPage() {
               <div> {/* Adjust the width of the TaxonomyPanel */}
                 <TaxonomyPanel 
                   taxonomyState={taxonomyState}
+                  projectId={projectId}
                 />
               </div>
             </div>
