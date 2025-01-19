@@ -9,6 +9,7 @@ interface Dimension {
   interface JsonContext {
     dimensions: Dimension[];
     summary: string;
+    projectId: number;
   }
   
   const processScenario = async (scenario: string, jsonContext: JsonContext): Promise<string> => {
@@ -21,6 +22,7 @@ interface Dimension {
         body: JSON.stringify({
           jsonContext,
           scenario,
+        projectId: jsonContext.projectId
         }),
       });
   

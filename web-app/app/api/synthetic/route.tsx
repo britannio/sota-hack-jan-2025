@@ -9,6 +9,7 @@ const systemPrompt = `You are a synthetic data generator. You output example que
 export async function POST(req: Request) {
   try {
     const { jsonContext, scenario, projectId } = await req.json();
+    console.log('Received PROJECT ID:', projectId);
     
     // Remove objectives from JSON context
     const contextWithoutObjectives = {

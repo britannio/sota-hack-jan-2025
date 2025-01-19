@@ -101,7 +101,7 @@ const ScenarioGenerator: React.FC<ScenarioGeneratorProps> = ({ dimensions, proje
   };
 
   const processScenario = async (scenario: string): Promise<string> => {
-    logger.debug('Processing scenario', { scenario });
+    logger.debug(`Processing scenario ${projectId}`, { scenario }, );
 
     try {
       const response = await fetch('/api/synthetic', {

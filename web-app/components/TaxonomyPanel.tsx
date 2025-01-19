@@ -67,6 +67,7 @@ const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState, onUpdateTa
       });
 
       const data = await response.json();
+      data['projectId'] = projectId; // Add projectId to data
 
       if (!response.ok) {
         console.error('Server error response:', data);
@@ -109,7 +110,7 @@ const TaxonomyPanel: React.FC<TaxonomyPanelProps> = ({ taxonomyState, onUpdateTa
                 />
               </div>
             ) : null;
-            
+
       case 'structured':
         return automatedJson ? (
           <div className="h-full bg-gray-50 rounded-md p-4 overflow-y-auto">
