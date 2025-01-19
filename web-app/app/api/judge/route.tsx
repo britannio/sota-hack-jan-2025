@@ -75,19 +75,19 @@ Ensure that you mention this in your critique message`
 
 
 const judgePromptTrailing = `
-Example evaluations for a different task where a DSL is evaluated:
+Here are some example evaluations for a different task where a DSL is evaluated:
 
 <examples>
 
 <example-1>
-<nlq>show me traces where ip is 10.0.2.90</nlq>
-<query>
+<input>show me traces where ip is 10.0.2.90</input>
+<output>
 {
   "breakdowns": ["trace.trace_id"],
   "calculations": [{"op": "COUNT"}],
   "filters": [{"column": "net.host.ip", "op": "=", "value": "10.0.2.90"}]
 }
-</query>
+</output>
 <critique>
 {
   "critique": "The query correctly filters for traces with an IP address of 10.0.2.90 
@@ -100,14 +100,14 @@ Example evaluations for a different task where a DSL is evaluated:
 </example-1>
 
 <example-2>
-<nlq>show me slowest trace</nlq>
-<query>
+<input>show me slowest trace</input>
+<output>
 {
   "calculations": [{"column": "duration_ms", "op": "MAX"}],
   "orders": [{"column": "duration_ms", "op": "MAX", "order": "descending"}],
   "limit": 1
 }
-</query>
+</output>
 <critique>
 {
   "critique": "While the query attempts to find the slowest trace using MAX(duration_ms) 
@@ -120,15 +120,15 @@ Example evaluations for a different task where a DSL is evaluated:
 </example-2>
 
 <example-3>
-<nlq>count window-hash where window-hash exists per hour</nlq>
-<query>
+<input>count window-hash where window-hash exists per hour</input>
+<output>
 {
   "breakdowns": ["window-hash"],
   "calculations": [{"op": "COUNT"}],
   "filters": [{"column": "window-hash", "op": "exists"}],
   "time_range": 3600
 }
-</query>
+</output>
 <critique>
 {
   "critique": "While the query correctly counts window-hash occurrences, the time_range 
@@ -148,10 +148,7 @@ Note that the task differs from the examples above so the critique should be tai
 <input>
 {{SYNTHETIC_DATA}}
 </input>
-
 <output>
 {{MODEL_OUTPUT}}
 </output>
-
-Please provide a detailed critique of whether this output satisfies the requirements.
 <critique>`
