@@ -1,6 +1,7 @@
 from smolagents import CodeAgent, LiteLLMModel
 import os
 import json
+from typing import Callable
 # from smolagents import tool
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
@@ -30,13 +31,40 @@ def text2regex(text: str) -> str:
     agent = CodeAgent(tools=[], model=model, add_base_tools=False)
     return agent.run(f"""<request>{text}</request>
 Generate a regex pattern based on the request.""")
-    
-# Open the input.json file
-with open("input.json", "r") as file:
-    data = json.load(file)
-    for input in data:
-        response = text2regex(input)
-        print(f"Input: {input}, Response: {response}")
+
+
+def process_dataset(
+    input_file: str, output_file: str, process_function: Callable[[str], str]
+) -> None:
+    # Load existing progress if output file exists
+    processed_ids = set()
+    results = []
+    if os.path.exists(output_file):
+        with open(output_file, "r") as f:
+            results = json.load(f)
+            processed_ids = {item["id"] for item in results}
+
+    # Process input file
+    with open(input_file, "r") as f:
+        data = json.load(f)
+
+    # Process each unprocessed item
+    for item in data:
+        if item["id"] not in processed_ids:
+            response = process_function(item["input"])
+            result = {"id": item["id"], "output": response}
+            results.append(result)
+            processed_ids.add(item["id"])
+
+            # Save progress after each item
+            with open(output_file, "w") as f:
+                json.dump(results, f, indent=2)
+
+            print(f"Processed item {item['id']}: {response}")
+
+
+if __name__ == "__main__":
+    process_dataset("input.json", "output.json", text2regex)
 
 
 # response = text2regex("I want to find all the numbers in the text that are greater than 100.")

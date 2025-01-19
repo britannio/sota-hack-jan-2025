@@ -139,7 +139,7 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
     const downloadInputs = () => {
         const inputs = data.map((row, index) => ({
             id: row.evaluation.id || "xxx",
-            data: row.synthetic_data.data
+            input: row.synthetic_data.data
         }))
         const blob = new Blob([JSON.stringify(inputs, null, 2)], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
@@ -152,19 +152,125 @@ export default function JudgePage({ params }: { params: Promise<{ id: string, mo
         URL.revokeObjectURL(url)
     }
 
+    const importOutputs = async () => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '.json'
+        
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (!file) return
+            
+            const reader = new FileReader()
+            reader.onload = async (e) => {
+                try {
+                    const outputs = JSON.parse(e.target?.result as string)
+                    
+                    // Update each evaluation individually
+                    const updatePromises = outputs.map((item: { id: number, output: string }) =>
+                        supabase
+                            .from('model_evaluation')
+                            .update({ model_output: item.output })
+                            .eq('model_id', modelId)
+                            .eq('synthetic_data_id', item.id)
+                    )
+
+                    await Promise.all(updatePromises)
+
+                    // Refresh the page data
+                    window.location.reload()
+                } catch (error) {
+                    console.error('Error importing outputs:', error)
+                    alert('Error importing outputs. Please check the file format.')
+                }
+            }
+            reader.readAsText(file)
+        }
+        
+        input.click()
+    }
+
+    const syncSyntheticData = async () => {
+        // First, get all synthetic data for this project
+        const { data: syntheticData } = await supabase
+            .from('synthetic_data')
+            .select('id')
+            .eq('project_id', projectId)
+
+        if (!syntheticData) return
+
+        // Get existing model evaluations
+        const { data: existingEvaluations } = await supabase
+            .from('model_evaluation')
+            .select('synthetic_data_id')
+            .eq('model_id', modelId)
+            .eq('project_id', projectId)
+
+        // Filter out synthetic data that already has evaluations
+        const existingIds = new Set(existingEvaluations?.map(e => e.synthetic_data_id) || [])
+        const missingEvaluations = syntheticData.filter(row => !existingIds.has(row.id))
+
+        if (missingEvaluations.length === 0) {
+            alert('All synthetic data already has evaluation entries')
+            return
+        }
+
+        // Insert only the missing evaluations
+        const { error } = await supabase
+            .from('model_evaluation')
+            .insert(
+                missingEvaluations.map(row => ({
+                    synthetic_data_id: row.id,
+                    model_id: modelId,
+                    project_id: projectId,
+                    // Set defaults for other fields
+                    model_output: null,
+                    judge_critique_text: null,
+                    judge_pass: null,
+                    expert_critique_text: null,
+                    expert_pass: null,
+                    improved_output: null
+                }))
+            )
+
+        if (error) {
+            console.error('Error syncing data:', error)
+            alert('Error syncing data')
+            return
+        }
+
+        // Refresh the page data
+        window.location.reload()
+    }
+
     return (
         <div className="p-8">
             {project && (
                 <div className="mb-6">
                     <div className="flex justify-between items-center mb-4">
                         <h1 className="text-2xl font-bold">Model Evaluation</h1>
-                        <button
-                            onClick={downloadInputs}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                        >
-                            <Download className="h-4 w-4" />
-                            Download Inputs
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={syncSyntheticData}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
+                            >
+                                Sync Synthetic Data
+                            </button>
+                            <button
+                                onClick={importOutputs}
+                                className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                            >
+                                <Download className="h-4 w-4 rotate-180" />
+                                Import Outputs
+                            </button>
+                            <button
+                                onClick={downloadInputs}
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                            >
+                                <Download className="h-4 w-4" />
+                                Download Inputs
+                            </button>
+                        </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="p-6 border rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
