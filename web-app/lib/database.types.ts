@@ -46,6 +46,7 @@ export type Database = {
           improved_output: string | null
           judge_critique_text: string | null
           judge_pass: boolean | null
+          judging: boolean | null
           model_id: number | null
           model_output: string | null
           project_id: number | null
@@ -58,6 +59,7 @@ export type Database = {
           improved_output?: string | null
           judge_critique_text?: string | null
           judge_pass?: boolean | null
+          judging?: boolean | null
           model_id?: number | null
           model_output?: string | null
           project_id?: number | null
@@ -70,6 +72,7 @@ export type Database = {
           improved_output?: string | null
           judge_critique_text?: string | null
           judge_pass?: boolean | null
+          judging?: boolean | null
           model_id?: number | null
           model_output?: string | null
           project_id?: number | null
