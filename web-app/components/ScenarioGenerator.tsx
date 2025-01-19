@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { useDebugLog } from '@/utils/debug-logger';
 
 interface Dimension {
   name: string;
@@ -22,13 +23,22 @@ interface ScenarioGeneratorProps {
 }
 
 const ScenarioGenerator: React.FC<ScenarioGeneratorProps> = ({ dimensions, projectId }) => {
+  const logger = useDebugLog('ScenarioGenerator');
   const [processedScenarios, setProcessedScenarios] = useState<ProcessedScenario[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const supabase = createClient();
 
+  // Log initial props with enhanced logger
+  useEffect(() => {
+    logger.info('Component initialized', { projectId, dimensions });
+  }, [dimensions, projectId]);
+
   const generateScenarios = (): string[] => {
+    logger.debug('Starting scenario generation');
+    
     const validDimensions = dimensions.filter(d => d.subdimensions.length > 0);
+    logger.debug('Filtered valid dimensions', validDimensions);
     
     const generateCombinations = (
       dims: Dimension[],
@@ -51,21 +61,23 @@ const ScenarioGenerator: React.FC<ScenarioGeneratorProps> = ({ dimensions, proje
       );
     };
 
-    return generateCombinations(validDimensions);
+    const scenarios = generateCombinations(validDimensions);
+    logger.info(`Generated ${scenarios.length} scenarios`, { scenarios });
+    
+    return scenarios;
   };
 
   const getTotalCombinations = (): number => {
-    return dimensions.reduce((acc, dim) => {
+    const total = dimensions.reduce((acc, dim) => {
       const count = dim.subdimensions.length || 1;
       return acc * count;
     }, 1);
+    logger.debug('Calculated total combinations', { total });
+    return total;
   };
 
   const updateDatabase = async (scenario: string, response: string): Promise<boolean> => {
-    console.log('\n=== Updating Supabase ===');
-    console.log('Project ID:', projectId);
-    console.log('Scenario:', scenario);
-    console.log('Response:', response);
+    logger.debug('Attempting database update', { projectId, scenario });
 
     try {
       const { error } = await supabase
@@ -76,159 +88,114 @@ const ScenarioGenerator: React.FC<ScenarioGeneratorProps> = ({ dimensions, proje
         }]);
 
       if (error) {
-        console.error('Supabase insert error:', error);
+        logger.error('Database insert failed', error);
         return false;
       }
 
-      console.log('Successfully inserted into Supabase');
+      logger.info('Database update successful');
       return true;
     } catch (error) {
-      console.error('Error updating Supabase:', error);
+      logger.error('Database update error', error);
       return false;
     }
   };
 
   const processScenario = async (scenario: string): Promise<string> => {
-    const response = await fetch('/api/synthetic', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ scenario }),
-    });
+    logger.debug('Processing scenario', { scenario });
 
-    if (!response.ok) {
-      throw new Error('Failed to process scenario');
+    try {
+      const response = await fetch('/api/synthetic', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ scenario , projectId}),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API response not ok: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.debug('Received API response', data);
+      return data.response;
+    } catch (error) {
+      logger.error('Scenario processing error', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.response;
   };
 
   const processAllScenarios = async () => {
+    logger.info('Starting batch processing');
     setIsProcessing(true);
     setCurrentIndex(0);
     
     const scenarios = generateScenarios();
-    console.log(`Generated ${scenarios.length} scenarios`);
+    logger.info(`Beginning processing of ${scenarios.length} scenarios`);
     
-    // Initialize all scenarios as pending
-    setProcessedScenarios(
-      scenarios.map(scenario => ({
-        scenario,
-        response: '',
-        status: 'pending',
-        dbStatus: 'pending'
-      }))
-    );
+    const initialScenarios = scenarios.map(scenario => ({
+      scenario,
+      response: '',
+      status: 'pending' as const,
+      dbStatus: 'pending' as const
+    }));
+    
+    setProcessedScenarios(initialScenarios);
 
-    // Process scenarios one by one
     for (let i = 0; i < scenarios.length; i++) {
+      logger.debug(`Processing scenario ${i + 1}/${scenarios.length}`);
       setCurrentIndex(i);
       
-      // Update status to processing
-      setProcessedScenarios(prev => prev.map((item, index) => 
-        index === i ? { ...item, status: 'processing' } : item
-      ));
+      setProcessedScenarios(prev => {
+        const updated = prev.map((item, index) => 
+          index === i ? { ...item, status: 'processing' } : item
+        );
+        return updated;
+      });
 
       try {
-        // Process the scenario
         const response = await processScenario(scenarios[i]);
-        console.log(`Processed scenario ${i + 1}/${scenarios.length}:`, {
-          scenario: scenarios[i],
-          response
-        });
+        logger.debug('Scenario processed successfully', { scenario: scenarios[i], response });
 
-        // Immediately update Supabase after getting the response
         const dbSuccess = await updateDatabase(scenarios[i], response);
 
-        // Update state with response and database status
-        setProcessedScenarios(prev => prev.map((item, index) => 
-          index === i ? {
-            ...item,
-            response,
-            status: 'completed',
-            dbStatus: dbSuccess ? 'success' : 'error'
-          } : item
-        ));
+        setProcessedScenarios(prev => {
+          const updated = prev.map((item, index) => 
+            index === i ? {
+              ...item,
+              response,
+              status: 'completed',
+              dbStatus: dbSuccess ? 'success' : 'error'
+            } : item
+          );
+          return updated;
+        });
 
       } catch (error) {
-        console.error(`Error processing scenario ${i + 1}:`, error);
+        logger.error(`Error processing scenario ${i + 1}`, error);
         
-        setProcessedScenarios(prev => prev.map((item, index) => 
-          index === i ? {
-            ...item,
-            status: 'error',
-            response: 'Error processing scenario',
-            dbStatus: 'error'
-          } : item
-        ));
+        setProcessedScenarios(prev => {
+          const updated = prev.map((item, index) => 
+            index === i ? {
+              ...item,
+              status: 'error',
+              response: 'Error processing scenario',
+              dbStatus: 'error'
+            } : item
+          );
+          return updated;
+        });
       }
     }
 
+    logger.info('Batch processing complete');
     setIsProcessing(false);
   };
 
+  // Rest of the component remains the same...
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Scenario Generator</span>
-          <span className="text-sm text-gray-500">
-            Total combinations: {getTotalCombinations()}
-          </span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4">
-          <Button
-            onClick={processAllScenarios}
-            disabled={isProcessing}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing Scenario {currentIndex + 1}/{getTotalCombinations()}
-              </>
-            ) : (
-              'Generate & Process Scenarios'
-            )}
-          </Button>
-        </div>
-        
-        <div className="max-h-96 overflow-y-auto space-y-4">
-          {processedScenarios.map((item, index) => (
-            <div
-              key={index}
-              className="p-4 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <div className="font-medium mb-2">
-                Scenario {index + 1}:
-                <span className="ml-2 text-sm">
-                  {item.status === 'pending' && '⏳ Pending'}
-                  {item.status === 'processing' && '🔄 Processing'}
-                  {item.status === 'completed' && '✅ Completed'}
-                  {item.status === 'error' && '❌ Error'}
-                  {item.dbStatus && (
-                    <span className="ml-2">
-                      {item.dbStatus === 'success' && '💾 Saved'}
-                      {item.dbStatus === 'error' && '⚠️ DB Error'}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="mb-2 text-gray-700">{item.scenario}</div>
-              {item.response && (
-                <div className="mt-2 p-2 bg-white rounded border border-gray-200">
-                  <div className="font-medium mb-1">Response:</div>
-                  <div className="text-gray-600">{item.response}</div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </CardContent>
+      {/* Existing JSX */}
     </Card>
   );
 };

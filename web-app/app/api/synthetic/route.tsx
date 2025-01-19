@@ -1,4 +1,5 @@
 // app/api/synthetic/route.ts
+import { createClient } from '@/utils/supabase/server';
 import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 import { NextResponse } from 'next/server';
@@ -7,7 +8,7 @@ const systemPrompt = `You are a synthetic data generator. You output example que
 
 export async function POST(req: Request) {
   try {
-    const { jsonContext, scenario } = await req.json();
+    const { jsonContext, scenario, projectId } = await req.json();
     
     // Remove objectives from JSON context
     const contextWithoutObjectives = {
@@ -57,6 +58,21 @@ Your task is to create a synthetic input example based on these above subdimensi
       temperature: 0.7,
       maxTokens: 500,
     });
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('synthetic_data')
+      .insert([{
+        project_id: projectId,
+        data: result.text
+      }]);
+
+    if (error) {    
+        return NextResponse.json(
+            { error: 'Database insert failed' },
+            { status: 500 }
+        );
+        }
 
     return NextResponse.json({ response: result.text });
   } catch (error) {
